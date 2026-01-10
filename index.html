@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Табель</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 16px; }
+    .ok { font-size: 18px; }
+    .small { color: #666; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div id="status" class="ok">Отмечаем...</div>
+  <div id="details" class="small"></div>
+
+  <script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwgGJXuT_sIk4si-qt9e9Krhqqnf9u4fsIZ3NWuuQFZeZu79aXCcFleNqzjypa66gIp/exec";
+
+    const tg = window.Telegram?.WebApp;
+    if (!tg) {
+      document.getElementById('status').textContent = "Откройте через Telegram.";
+      throw new Error("Telegram WebApp API not found");
+    }
+
+    tg.ready();
+
+    const initData = tg.initData || "";
+    const unsafe = tg.initDataUnsafe || {};
+    const user = unsafe.user || {};
+
+    // startapp параметр (in/out) Telegram передаёт как start_param
+    const startParam =
+      unsafe.start_param ||
+      new URLSearchParams(window.location.search).get("tgWebAppStartParam") ||
+      "";
+
+    const action = (String(startParam).toLowerCase() === "out") ? "OUT" : "IN";
+
+    const payload = {
+      initData,
+      action,
+      startParam,
+      user: {
+        id: user.id || null,
+        first_name: user.first_name || null,
+        last_name: user.last_name || null
+      },
+      client_ts: new Date().toISOString()
+    };
+
+    fetch(GAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+    .then(async (r) => {
+      const txt = await r.text();
+      if (!r.ok) throw new Error(txt || ("HTTP " + r.status));
+      return txt;
+    })
+    .then(() => {
+      document.getElementById('status').textContent = "Готово. Отметка выполнена.";
+      document.getElementById('details').textContent = "Окно закроется автоматически.";
+      setTimeout(() => tg.close(), 1200);
+    })
+    .catch((e) => {
+      document.getElementById('status').textContent = "Ошибка отметки.";
+      document.getElementById('details').textContent = String(e.message || e);
+    });
+  </script>
+</body>
+</html>
