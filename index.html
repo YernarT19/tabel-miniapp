@@ -16,7 +16,7 @@
   <div id="details" class="small"></div>
 
   <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbz0DMs8jhEFcjcTjA8mjfbTHSlI9OZnpkR5rK6OljVwNUB515gazEjVpVPRwmOD-80I/exec";
+    const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbz0DMs8jhEFcjcTjA8mjfbTHSlI9OZnpkR5rK6OljVwNUB515gazEjVpVPRwmOD-80I/exec";
 
     const statusEl = document.getElementById('status');
     const detailsEl = document.getElementById('details');
@@ -62,10 +62,10 @@
       }
     };
 
-    // Отправляем как форму payload=... (самый стабильный вариант для Apps Script)
+    // Отправляем как форму payload=...
     const formBody = "payload=" + encodeURIComponent(JSON.stringify(payload));
 
-    fetch(GAS_URL, {
+    fetch(WEBAPP_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
       body: formBody
@@ -82,7 +82,7 @@
     })
     .catch((e) => {
       statusEl.textContent = "Ошибка отметки.";
-      detailsEl.textContent = String(e.message || e);
+      detailsEl.textContent = String(e && (e.message || e) ? (e.message || e) : e);
     });
   </script>
 </body>
