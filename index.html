@@ -1,113 +1,137 @@
-<script>
-  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbz0DMs8jhEFcjcTjA8mjfbTHSlI9OZnpkR5rK6OljVwNUB515gazEjVpVPRwmOD-80I/exec";
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tabel Damu</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 16px; }
+    #status { font-size: 18px; }
+    #details { color: #666; margin-top: 10px; white-space: pre-wrap; }
+    button { font-size: 18px; padding: 10px 14px; }
+  </style>
+</head>
+<body>
+  <div id="status">Загрузка...</div>
+  <div id="details"></div>
 
-  const statusEl = document.getElementById('status');
-  const detailsEl = document.getElementById('details');
+  <script>
+    const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbz0DMs8jhEFcjcTjA8mjfbTHSlI9OZnpkR5rK6OljVwNUB515gazEjVpVPRwmOD-80I/exec";
 
-  const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+    const statusEl = document.getElementById("status");
+    const detailsEl = document.getElementById("details");
 
-  if (!tg) {
-    statusEl.textContent = "Откройте через Telegram-бота.";
-    detailsEl.textContent = "Через обычный браузер отметка не выполняется.";
-    throw new Error("Not in Telegram WebApp");
-  }
-
-  tg.ready();
-
-  if (typeof tg.showScanQrPopup !== "function") {
-    statusEl.textContent = "Сканер QR не поддерживается.";
-    detailsEl.textContent = "Обновите Telegram и попробуйте снова.";
-    throw new Error("showScanQrPopup not supported");
-  }
-
-  const initData = tg.initData || "";
-  const unsafe = tg.initDataUnsafe || {};
-  const user = unsafe.user || {};
-
-  if (!initData) {
-    statusEl.textContent = "Нет данных Telegram (initData).";
-    detailsEl.textContent = "Откройте Mini App из бота.";
-    throw new Error("Empty initData");
-  }
-
-  function renderFallbackButton() {
-    statusEl.textContent = "Для отметки отсканируйте QR.";
-    detailsEl.innerHTML = '<button id="scanBtn" style="font-size:18px;padding:10px 14px;">Сканировать QR</button>';
-
-    document.getElementById("scanBtn").onclick = () => openScanner();
-  }
-
-  async function sendToServer(action, qrText) {
-    const payload = {
-      initData,
-      action,
-      qrText: String(qrText || ""),
-      user: {
-        id: user.id || null,
-        first_name: user.first_name || null,
-        last_name: user.last_name || null
-      }
+    // Показываем любые JS-ошибки на экране (иначе будет "белый лист")
+    window.onerror = function (msg, src, line, col) {
+      statusEl.textContent = "Ошибка JavaScript";
+      detailsEl.textContent =
+        "msg: " + msg + "\n" +
+        "src: " + (src || "") + "\n" +
+        "line: " + line + ", col: " + col;
+      return true;
     };
 
-    const formBody = "payload=" + encodeURIComponent(JSON.stringify(payload));
-
-    const r = await fetch(WEBAPP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-      body: formBody
-    });
-
-    return await r.text();
-  }
-
-  function openScanner() {
-    statusEl.textContent = "Наведите камеру на QR...";
-    detailsEl.textContent = "";
-
-    tg.showScanQrPopup(
-      { text: "Наведите камеру на QR для отметки" },
-      async (qrText) => {
-        try {
-          const raw = String(qrText || "").trim();
-          const norm = raw.toUpperCase();
-
-          let action = null;
-          if (norm === "IN") action = "IN";
-          if (norm === "OUT") action = "OUT";
-
-          if (!action) {
-            statusEl.textContent = "Неверный QR.";
-            detailsEl.textContent = "Используйте QR на входе (IN) или на выходе (OUT).";
-            return true; // закрыть сканер
-          }
-
-          statusEl.textContent = "Отмечаем...";
-          const txt = await sendToServer(action, raw);
-
-          statusEl.textContent = "Ответ сервера: " + txt;
-          detailsEl.textContent = (txt === "ok") ? "Отметка выполнена." : "Ошибка: " + txt;
-
-          if (txt === "ok") setTimeout(() => tg.close(), 1200);
-          else setTimeout(() => renderFallbackButton(), 1200);
-
-          return true; // закрыть сканер
-        } catch (e) {
-          statusEl.textContent = "Ошибка отметки.";
-          detailsEl.textContent = String(e && (e.message || e) ? (e.message || e) : e);
-          setTimeout(() => renderFallbackButton(), 1200);
-          return true;
-        }
-      }
-    );
-  }
-
-  // Автозапуск сканера при открытии Mini App
-  // Небольшая задержка повышает шанс, что Telegram успеет полностью инициализировать WebApp.
-  setTimeout(() => {
-    try {
-      openScanner();
-    } catch (e) {
-      renderFallbackButton();
+    function show(msg, details) {
+      statusEl.textContent = msg;
+      detailsEl.textContent = details || "";
     }
-  }, 150);
-</script>
+
+    const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+    if (!tg) {
+      show("Откройте через Telegram-бота.", "В обычном браузере отметка не выполняется.");
+      throw new Error("Not in Telegram WebApp");
+    }
+
+    tg.ready();
+
+    if (typeof tg.showScanQrPopup !== "function") {
+      show("Сканер QR не поддерживается.", "Обновите Telegram и попробуйте снова.");
+      throw new Error("showScanQrPopup not supported");
+    }
+
+    const initData = tg.initData || "";
+    const unsafe = tg.initDataUnsafe || {};
+    const user = unsafe.user || {};
+
+    if (!initData) {
+      show("Нет данных Telegram (initData).", "Откройте Mini App из бота заново.");
+      throw new Error("Empty initData");
+    }
+
+    async function sendToServer(action, qrText) {
+      const payload = {
+        initData,
+        action,
+        qrText: String(qrText || ""),
+        user: {
+          id: user.id || null,
+          first_name: user.first_name || null,
+          last_name: user.last_name || null
+        }
+      };
+
+      const body = "payload=" + encodeURIComponent(JSON.stringify(payload));
+
+      const r = await fetch(WEBAPP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body
+      });
+
+      return await r.text();
+    }
+
+    function openScanner() {
+      show("Наведите камеру на QR...", "");
+
+      tg.showScanQrPopup(
+        { text: "Наведите камеру на QR для отметки" },
+        async (qrText) => {
+          try {
+            const raw = String(qrText || "").trim();
+            const norm = raw.toUpperCase();
+
+            let action = null;
+            if (norm === "IN") action = "IN";
+            if (norm === "OUT") action = "OUT";
+
+            if (!action) {
+              show("Неверный QR.", "QR должен содержать IN или OUT.");
+              return true;
+            }
+
+            show("Отмечаем...", "Действие: " + (action === "IN" ? "Приход" : "Уход"));
+
+            const txt = await sendToServer(action, raw);
+
+            show("Ответ сервера: " + txt, txt === "ok" ? "Отметка выполнена." : "Не выполнено.");
+            if (txt === "ok") setTimeout(() => tg.close(), 1200);
+
+            return true;
+          } catch (e) {
+            show("Ошибка отметки.", String(e && (e.message || e) ? (e.message || e) : e));
+            return true;
+          }
+        }
+      );
+    }
+
+    // Попытка автозапуска сканера при открытии Mini App
+    // Если Telegram/OS блокирует — показываем кнопку.
+    function renderButton() {
+      statusEl.textContent = "Для отметки отсканируйте QR.";
+      detailsEl.innerHTML = '<button id="scanBtn">Сканировать QR</button>\n\nQR на входе: IN\nQR на выходе: OUT';
+      document.getElementById("scanBtn").onclick = () => openScanner();
+    }
+
+    setTimeout(() => {
+      try {
+        openScanner();
+      } catch (e) {
+        renderButton();
+      }
+    }, 150);
+  </script>
+</body>
+</html>
