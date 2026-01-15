@@ -28,7 +28,6 @@
         detailsEl.textContent = details || "";
       }
 
-      // Показываем любые JS-ошибки на экране (иначе будет "белый лист")
       window.onerror = function (msg, src, line, col) {
         show(
           "Ошибка JavaScript",
@@ -39,7 +38,6 @@
         return true;
       };
 
-      // Геолокация (обязательная)
       function getLocationOnce() {
         return new Promise((resolve, reject) => {
           if (!navigator.geolocation) return reject(new Error("Geolocation not supported"));
@@ -49,7 +47,8 @@
               resolve({
                 lat: pos.coords.latitude,
                 lon: pos.coords.longitude,
-                acc: pos.coords.accuracy
+                acc: pos.coords.accuracy,
+                ts: Date.now()
               });
             },
             (err) => {
@@ -67,6 +66,7 @@
       }
 
       tg.ready();
+      tg.expand();
 
       if (typeof tg.showScanQrPopup !== "function") {
         show("Сканер QR не поддерживается.", "Обновите Telegram и попробуйте снова.");
@@ -80,7 +80,7 @@
       if (!initData) {
         show(
           "Нет данных Telegram (initData).",
-          "Откройте мини-приложение через кнопку меню бота «Сканировать QR».\n" +
+          "Откройте мини-приложение через кнопку/меню бота.\n" +
           "Не открывайте страницу по ссылке в браузере."
         );
         return;
@@ -92,6 +92,7 @@
           action,
           qrText: String(qrText || ""),
           location: location || null,
+          // user можно оставлять для дебага, но сервер НЕ должен ему доверять
           user: {
             id: user.id || null,
             first_name: user.first_name || null,
@@ -156,18 +157,23 @@
               // 2) Отправка
               show(
                 "Отмечаем...",
-                "Действие: " + (action === "IN" ? "Приход" : "Уход") +
-                "\nТочность: " + (loc && loc.acc ? Math.round(loc.acc) + " м" : "—")
+                "Действие: " + (action === "IN" ? "Приход" : "Уход") + "\n" +
+                "Точность: " + (loc && isFinite(loc.acc) ? Math.round(loc.acc) + " м" : "—")
               );
 
               const txt = await sendToServer(action, raw, {
                 lat: loc.lat,
                 lon: loc.lon,
-                acc: loc.acc
+                acc: loc.acc,
+                ts: loc.ts
               });
 
-              show("Ответ сервера: " + txt, txt === "ok" ? "Отметка выполнена." : "Не выполнено.");
-              if (txt === "ok") setTimeout(() => tg.close(), 1200);
+              if (String(txt).trim() === "ok") {
+                show("Готово.", "Отметка выполнена.");
+                setTimeout(() => tg.close(), 1200);
+              } else {
+                show("Отказ.", String(txt || "no response"));
+              }
 
               return true;
             } catch (e) {
@@ -186,6 +192,14 @@
           renderButton();
         }
       }, 150);
+
+      // На случай если showScanQrPopup заблокирован автозапуском, кнопка остаётся доступной
+      // (покажем её через небольшую задержку, если статус всё ещё "Наведите камеру...")
+      setTimeout(() => {
+        if (statusEl.textContent && statusEl.textContent.indexOf("Наведите камеру") >= 0 && !document.getElementById("scanBtn")) {
+          renderButton();
+        }
+      }, 1200);
 
     })();
   </script>
