@@ -86,7 +86,7 @@
         return;
       }
 
-            async function sendToServer(action, qrText, location) {
+      async function sendToServer(action, qrText, location) {
         const payload = {
           initData,
           action,
@@ -111,36 +111,13 @@
         return await r.text();
       }
 
-            async function whoami() {
-        try {
-          const txt = await sendToServer("WHOAMI", "", null);
-          const obj = JSON.parse(txt);
-          return !!(obj && obj.isAdmin);
-        } catch (e) {
-          return false;
-        }
-      }
-
-            function renderButton(isAdmin) {
-        statusEl.textContent = "Выберите действие.";
-
-        let html = '<button id="scanBtn">Сканировать QR</button>';
-
-        if (isAdmin) {
-          html += ' <button id="adminBtn">Админ</button>';
-        }
-
-        html += '<br><br>' +
+      function renderButton() {
+        statusEl.textContent = "Для отметки отсканируйте QR.";
+        detailsEl.innerHTML =
+          '<button id="scanBtn">Сканировать QR</button><br><br>' +
           'QR на входе: IN<br>' +
           'QR на выходе: OUT';
-
-        detailsEl.innerHTML = html;
-
         document.getElementById("scanBtn").onclick = () => openScanner();
-
-        if (isAdmin) {
-          document.getElementById("adminBtn").onclick = () => openAdminMenu();
-        }
       }
 
       function openScanner() {
@@ -207,41 +184,24 @@
         );
       }
 
-            function openAdminMenu() {
-        show(
-          "Админ-меню",
-          "Сотрудники\nСмены\nГрафик\n\nДальше подключим реальные экраны."
-        );
-      }
-
-      // Старт: если админ — показываем кнопки (QR + Админ), если не админ — сразу запускаем сканер
-setTimeout(async () => {
-  const isAdmin = await whoami();
-
-  if (isAdmin) {
-    renderButton(true); // покажет QR + Админ
-    return;
-  }
-
-  // не админ: поведение как раньше
-  try {
-    openScanner();
-  } catch (e) {
-    renderButton(false); // покажет только QR
-  }
-}, 150);
+      // Автозапуск сканера. Если Telegram/OS блокирует — покажем кнопку.
+      setTimeout(() => {
+        try {
+          openScanner();
+        } catch (e) {
+          renderButton();
+        }
+      }, 150);
 
       // На случай если showScanQrPopup заблокирован автозапуском, кнопка остаётся доступной
       // (покажем её через небольшую задержку, если статус всё ещё "Наведите камеру...")
-      setTimeout(async () => {
-  if (statusEl.textContent && statusEl.textContent.indexOf("Наведите камеру") >= 0 && !document.getElementById("scanBtn")) {
-    const isAdmin = await whoami();
-    renderButton(isAdmin);
-  }
-}, 1200);
+      setTimeout(() => {
+        if (statusEl.textContent && statusEl.textContent.indexOf("Наведите камеру") >= 0 && !document.getElementById("scanBtn")) {
+          renderButton();
+        }
+      }, 1200);
 
     })();
   </script>
 </body>
 </html>
-
